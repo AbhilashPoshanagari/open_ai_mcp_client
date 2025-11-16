@@ -2,7 +2,7 @@
   <mat-sidenav-container class="sidenav-container">
     <mat-sidenav #sidenav mode="side" [(opened)]="isSidebarOpen" class="sidebar">
        <app-mcp-client (tools)="toolsList($event)" (sendOpenAiKey)="InitializeLLM($event)"></app-mcp-client>
-       <app-elicitation [tool]="selectedTool" (sendToolResponse)="tool_response($event)"></app-elicitation>
+       <app-elicitation [tool]="selectedTool" (sendToolRequest)="tool_request($event)" (sendToolResponse)="tool_response($event)"></app-elicitation>
       <app-sidebar></app-sidebar>
     </mat-sidenav>
     
@@ -15,7 +15,7 @@
       </div>
       
       <div class="chat-container">
-        <app-chatbot [messages]="chatMessages"></app-chatbot>
+        <app-chatbot [messages]="chatMessages" #chatComponent></app-chatbot>
         <app-input-box (sendMessage)="agentWorkflow($event)" (sendTool)="testTool($event)"></app-input-box>
       </div>
     </mat-sidenav-content>

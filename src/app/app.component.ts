@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, inject, model, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, inject, model, signal, ChangeDetectionStrategy, ViewChild } from '@angular/core';
 // import { RouterOutlet } from '@angular/router';
 import { McpService } from './services/mcp.service';
 import { InputBoxComponent } from './components/input-box/input-box.component';
@@ -37,6 +37,7 @@ interface DialogData {
 
 })
 export class AppComponent {
+  @ViewChild('chatComponent') chatComponent!: ChatbotComponent;
   messages: any[] = [];
   title = 'AI powered chatbot';
   isSidebarOpen = true;
@@ -51,6 +52,7 @@ export class AppComponent {
   human_prompt: string = '';
   llm_runnable: any;
   selectedTool: NamedItem | null = null;
+  streamingContent: string = '';
   readonly page = signal('');
   readonly openAiKey = model('');
   readonly dialog = inject(MatDialog);
@@ -58,8 +60,42 @@ export class AppComponent {
   constructor(private mcpService: McpService, private openAIService: OpenAiService, 
     private storageService: StorageService,
     private mcpElicitationService: McpElicitationService, private cdr: ChangeDetectorRef) {
-    this.system_prompt = "You are a helpful assistant. Use tools *only* when needed. \
-    If you already have the answer, reply normally instead of calling a tool again.";
+    this.mcpService.mcpServerInstructions$.subscribe((res) => {
+    this.system_prompt = res ? res: "You are a helpful assistant. Use tools *only* when needed. \
+        If you already have the answer, reply normally instead of calling a tool again.";
+    })
+    this.mcpService.streaming$.subscribe((stream: any) => {
+        if(stream.status && stream.status === "completed"){
+          // Handle completed status if needed
+          this.streamingContent += stream.message;
+          const lastIndex = this.chatMessages.length - 1;
+          this.chatMessages[lastIndex] = this.checkToolCall(this.streamingContent);
+          this.cdr.detectChanges();
+          this.streamingContent = '';
+          setTimeout(() => {
+              this.chatComponent.scrollToBottom(true); // Force scroll
+            }, 0);
+        }
+        else if(stream.status && stream.status === "started"){
+          this.streamingContent += stream.message;
+          this.chatMessages.push({sender: 'bot', content: this.streamingContent, timestamp: new Date()});
+          // Use setTimeout to ensure DOM is updated before scrolling
+            setTimeout(() => {
+              this.chatComponent.scrollToBottom(); // Force scroll
+            }, 0);
+        }
+        else if(stream.status && stream.status === "in_progress"){
+          this.streamingContent += stream.message;
+          const lastIndex = this.chatMessages.length - 1;
+          this.chatMessages[lastIndex].content = this.streamingContent;
+          this.cdr.detectChanges();
+            setTimeout(() => {
+              this.chatComponent.scrollToBottom(true); // Force scroll
+            }, 0);
+        }else {
+
+        }
+      });
     this.human_prompt = "{input}";
     // Initialize with stored token or empty string
     const storedToken = this.storageService.getValueFromKey('open_ai_token') || '';
@@ -73,9 +109,47 @@ export class AppComponent {
     }
   }
 
+  checkToolCall(streamingContent: string){
+    let final_response: {sender: string,
+          content: string,
+          layouts?: any,
+          timestamp: Date} = {
+                              sender: "bot",
+                              content: streamingContent,
+                              timestamp: new Date()
+                            }
+    try {
+      const jsonFormat = JSON.parse(streamingContent);
+      const server_keys = Object.keys(jsonFormat);
+      if(server_keys.includes("name") && server_keys.includes("arguments")){
+        if(jsonFormat.name === "table_layout_tool"){
+            const layouts = [{
+                layout_name: "table",
+                tables: [jsonFormat.arguments]
+              }]
+            final_response = {
+                sender: "bot",
+                content: "",
+                layouts: layouts,
+                timestamp: new Date()
+              }
+            }
+            else {
+
+            }
+          }
+      else {
+          }
+      return final_response;
+    } catch (error) {
+      return final_response;
+    }    
+  }
+
   InitializeLLM(token: string, tools: OpenAITool[] = []){
         // this.openAIService.getOpenAIFunctions(token).subscribe(result => {
         //   if (result.status === 200) {
+        // console.log("System prompt : ", this.system_prompt);
         this.llm_model = this.openAIService.getOpenAiClient(token)  
         if (tools.length > 0){
             try {
@@ -133,100 +207,132 @@ testTool(tool: NamedItem | null){
   
 }
 
-tool_response(form: {request: string, response: string}){
+tool_response(form: {response: string, layouts?: any}){
+  this.chatMessages.push({
+          sender: 'bot',
+          content: form.response,
+          layouts: form.layouts,
+          timestamp: new Date()
+        });
+  setTimeout(() => {
+    this.chatComponent.scrollToBottom(true); // Force scroll
+  }, 0);
+}
+
+tool_request(form: {request: string}){
   this.chatMessages.push({
         sender: 'user',
         content: form.request,
         timestamp: new Date()
       });
-  this.chatMessages.push({
-          sender: 'bot',
-          content: form.response,
-          timestamp: new Date()
-        });
 }
 
 async agentWorkflow(userInput: string) {
-  // Initial user message
-  let processedText: string = '';
+  let processedText = '';
   let fullChunk: AIMessageChunk | null = null;
-  const inputMessages: any[] = [ { role: 'user', content: userInput }];
+  const inputMessages: any[] = [{ role: 'user', content: userInput }];
+  const usedTools = new Set<string>();
 
- // Optionally add user's question to chat
+  this.chatMessages.push({ sender: 'user', content: userInput, timestamp: new Date() });
 
-  this.chatMessages.push({sender: 'user', content: userInput, timestamp: new Date()});
-  // First call to the model
   try {
-     const firstStream = await this.llm_runnable.stream({ input: inputMessages });
-    // Pre-allocate bot message for streaming content
-    this.chatMessages.push({ sender: 'bot', content: '', timestamp: new Date() });
+    let continueLoop = true;
+    let iteration = 0;
 
-    for await (const chunk of firstStream) {
-      if (chunk instanceof AIMessageChunk) {
-        if (!fullChunk) fullChunk = chunk;
-        else fullChunk = fullChunk.concat(chunk);
+    while (continueLoop && iteration < 8) { // safety limit
+      iteration++;
+      const stream = await this.llm_runnable.stream({ input: inputMessages });
 
-        const lastIndex = this.chatMessages.length - 1;
-        this.chatMessages[lastIndex].content = fullChunk.content;
-        this.cdr.detectChanges();
-      }
-    }
-        //  Tool call expected
-        if (fullChunk?.tool_calls && fullChunk.tool_calls.length > 0) {
-          const tool_call = fullChunk.tool_calls[0];  // handle one tool for now
+      fullChunk = null;
+      this.chatMessages.push({ sender: 'bot', content: '', timestamp: new Date() });
 
-          const toolArgs = tool_call.args;
-          const toolName = tool_call.name;
-
-          const rag_response: any = await this.mcpService.callTool(toolName, toolArgs);
-          const toolOutput = rag_response["content"].map((content:{type: string, text: string}) => content.text).join('\n');
-          // const toolOutput = rag_response["content"][0]["text"].result;
-          this.chatMessages.push({sender: 'bot', content: toolOutput, timestamp: new Date() });
-
-          // Add assistant tool_call response
-          inputMessages.push({
-            type: 'function_call',
-            id: tool_call.id,
-            name: tool_call.name,
-            arguments: JSON.stringify(toolArgs),
-          });
-
-          // Add tool output as structured message
-          inputMessages.push({
-            type: "function_call_output",
-            id: tool_call.id,
-            output: toolOutput
-          });
-
-          // Second call to model with appended context
-          const secondResponse = await this.llm_runnable.stream({ input: inputMessages });
-          fullChunk = null; // Reset for next stream
-
-          this.chatMessages.push({sender: 'bot', content: '', timestamp: new Date() });
-            for await (const chunk of secondResponse) {
-              if ( chunk instanceof AIMessageChunk){
-                  if (!fullChunk) {
-                    fullChunk = chunk;
-                  } else {
-                    fullChunk = fullChunk.concat(chunk);
-                  }
-                const lastIndex = this.chatMessages.length - 1;
-                this.chatMessages[lastIndex].content = fullChunk.content;
-                this.cdr.detectChanges(); // To ensure Angular re-renders it
-              }else {
-                // this.chatMessages.push({sender: 'bot', content: secondResponse.content, timestamp: new Date() });
-              }
-            }
+      for await (const chunk of stream) {
+        if (chunk instanceof AIMessageChunk) {
+          fullChunk = fullChunk ? fullChunk.concat(chunk) : chunk;
+          const lastIndex = this.chatMessages.length - 1;
+          this.chatMessages[lastIndex].content = fullChunk.content;
+          this.cdr.detectChanges();
+          setTimeout(() => {
+              this.chatComponent.scrollToBottom(true); // Force scroll
+            }, 0);
         }
-    } catch (error) {
+      }
+
+      // Check for tool calls
+      const toolCalls = fullChunk?.tool_calls ?? [];
+
+      if (toolCalls.length === 0) {
+        // No more tools → stop loop
+        continueLoop = false;
+        break;
+      }
+
+      // Process tools once per iteration
+      for (const toolCall of toolCalls) {
+        const toolName = toolCall.name;
+        const toolArgs = toolCall.args;
+
+        // Avoid repeating same tool
+        if (usedTools.has(toolName)) {
+          console.warn(`Skipping repeated tool: ${toolName}`);
+          continueLoop = false;
+          break;
+        }
+        usedTools.add(toolName);
+
+        // Call MCP tool
+        const ragResponse = await this.mcpService.callTool(toolName, toolArgs);
+
+        const toolOutput = Array.isArray(ragResponse?.content)
+          ? ragResponse.content.map((c: { type: string; text: string }) => c.text).join('\n')
+          : JSON.stringify(ragResponse);
+
+        if(ragResponse.layouts){
+          this.chatMessages.push({
+            sender: 'bot',
+            content: toolOutput,
+            layout: ragResponse.layouts,
+            timestamp: new Date(),
+          });
+        }else {
+          this.chatMessages.push({
+            sender: 'bot',
+            content: toolOutput,
+            timestamp: new Date(),
+          });
+        }
+
+
+        // Add tool call + output back to LLM context
+        inputMessages.push({
+          role: 'assistant',
+          type: 'function_call',
+          id: toolCall.id,
+          name: toolName,
+          arguments: JSON.stringify(toolArgs),
+        });
+
+        inputMessages.push({
+          role: 'tool',
+          type: 'function_call_output',
+          id: toolCall.id,
+          output: toolOutput,
+        });
+      }
+      console.log("input messages : ", inputMessages);
+    }
+
+  } catch (error) {
+    console.error("Agent workflow error:", error);
     this.chatMessages.push({
       sender: 'bot',
       content: 'Sorry, something went wrong while processing your request.',
-      timestamp: new Date()
+      timestamp: new Date(),
     });
+    setTimeout(() => {
+      this.chatComponent.scrollToBottom(true); // Force scroll
+    }, 0);
   }
- }
-
-
+}
 
 }

@@ -1,13 +1,67 @@
-<div class="chat-messages">
-    @for (message of messages; track message) {
-      <div class="message-container" [ngClass]="{'user-message': message.sender === 'user', 'bot-message': message.sender === 'bot'}">
-        <div class="message-content">
-          <div class="message-text">
-            <!-- {{message.content}} -->
-            <markdown *ngIf="message.content && typeof message.content === 'string'" [data]="message.content"></markdown>
-          </div>
-          <div class="message-time">{{message.timestamp | date:'shortTime'}}</div>
+<div #chatMessages class="chat-messages" (scroll)="onChatScroll()">
+  @for (message of messages; track message) {
+    <div class="message-container" [ngClass]="{'user-message': message.sender === 'user', 'bot-message': message.sender === 'bot'}">
+      <div class="message-content">
+        <div class="message-text">
+          <markdown *ngIf="message.content && typeof message.content === 'string'" [data]="message.content"></markdown>
         </div>
+        @if (message.layouts && isTableLayout(message.layouts)) {
+          <div class="table-container">
+            @for (table of getTables(message.layouts); track table; let tableIndex = $index) {
+              <div class="table-wrapper">
+                @if (hasValidTableName(table)) {
+                  <div class="table-header">Table: {{ table.table_name }}</div>
+                }
+                @if (hasValidTableStructure(table)) {
+                  <table class="dynamic-table">
+                    <thead>
+                      <tr>
+                        @for (header of getTableHeaders(table); track header; let colIndex = $index) {
+                          <th [title]="header">{{ header }}</th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of getTableData(table); track $index; let rowIndex = $index) {
+                        <tr>
+                          @for (cell of row; track $index; let cellIndex = $index) {
+                            <td [title]="cell">{{ cell }}</td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                } @else {
+                  <div class="table-error">Invalid table structure</div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+         <!-- Button Layout -->
+        @if (message.layouts && isButtonLayout(message.layouts)) {
+          <div class="button-container">
+            @for (button of getButtons(message.layouts); track button; let buttonIndex = $index) {
+              <div class="button-wrapper">
+                @if (hasValidButtonStructure(button)) {
+                  <a 
+                    [href]="getButtonLink(button)" 
+                    [target]="isExternalLink(button) ? '_blank' : '_self'"
+                    class="dynamic-button"
+                    [attr.rel]="isExternalLink(button) ? 'noopener noreferrer' : null">
+                    {{ getButtonTitle(button) }}
+                  </a>
+                } @else {
+                  <div class="button-error">Invalid button structure</div>
+                }
+              </div>
+            }
+          </div>
+        }
+        
+        <div class="message-time">{{message.timestamp | date:'shortTime'}}</div>
       </div>
-    }
+    </div>
+  }
 </div>
