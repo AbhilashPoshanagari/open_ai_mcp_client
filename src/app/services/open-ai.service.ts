@@ -1,44 +1,32 @@
 import { Injectable } from '@angular/core';
-import { ChatOpenAI } from "@langchain/openai";
+import { ChatOpenAI, AzureChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { 
   SystemMessagePromptTemplate, 
   HumanMessagePromptTemplate 
 } from "@langchain/core/prompts";
+import { AzureOpenAI } from "openai";
+
 // import { MemorySaver } from "@langchain/langgraph";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { RestApiService } from './rest-api.service';
 import { of, Observable } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 // import { createToolCallingAgent } from "langchain/agents";
-
+// import "dotenv/config";
+import { environment } from '../../environments/environment';
 @Injectable({
   providedIn: 'root'
 })
 export class OpenAiService {
   langchain_model: any = null;
   openAI_agent: any;
+  AZURE_OPENAI_API_VERSION: string ="2024-12-01-preview";
+  AZURE_OPENAI_DEPLOYMENT: string ="gpt-4o";
+  AZURE_OPENAI_INSTANCE: string ="azrig-esri-sap-demo-gpt-eastus-01";
+
   constructor(private restApiService: RestApiService) {
   }
-
-//  getOpenAIFunctions(openAIKey: string): Observable<any> {
-//   if (!openAIKey) {
-//     console.error('OpenAI API key is not set.');
-//     return of({ status: 401, message: "OpenAI key not valid or not available" });
-//   } else {
-//     return this.restApiService.getRequest(this.openAi_format).pipe(
-//       map((funcs: any) => {
-//         if (funcs.status === 200) {
-//           console.log("OpenAI Functions: ", funcs.open_ai);
-//           return { status: funcs.status, open_ai: funcs.open_ai };
-//         } else {
-//           return { status: funcs.status, message: funcs.error };
-//         }
-//       }),
-//       catchError(() => of({ status: 500, message: "Something went wrong" }))
-//     );
-//   }
-// }
 
   getOpenAiClient(openAIKey: string) {
     if (!openAIKey) {

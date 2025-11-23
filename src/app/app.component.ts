@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, inject, model, signal, ChangeDetectionStrategy, ViewChild } from '@angular/core';
+import { Component, ChangeDetectorRef, inject, model, signal, ChangeDetectionStrategy, ViewChild, HostListener } from '@angular/core';
 // import { RouterOutlet } from '@angular/router';
 import { McpService } from './services/mcp.service';
 import { InputBoxComponent } from './components/input-box/input-box.component';
@@ -20,6 +20,7 @@ import { DomainDialogComponent } from './components/domain-dialog/domain-dialog.
 import { MatDialog } from '@angular/material/dialog';
 import { StorageService } from './services/storage.service';
 import { OpenAITool } from './constants/toolschema';
+import { TableLayout } from './components/models/message.model';
 interface DialogData {
   page: string;
   server: string;
@@ -40,9 +41,11 @@ export class AppComponent {
   @ViewChild('chatComponent') chatComponent!: ChatbotComponent;
   messages: any[] = [];
   title = 'AI powered chatbot';
-  isSidebarOpen = true;
+  // isSidebarOpen = false;
+  isSidebarOpen = false;
+  isMobileScreen = false;
   chatMessages: any[] = [
-    { sender: 'bot', content: 'Hello! How can I assist you today?', timestamp: new Date() }
+    { role: 'bot', content: 'Hello! How can I assist you today?', timestamp: new Date() }
   ];
   opentAI_functions: OpenAIFunctions[] | undefined;
   llm_model: any;
@@ -56,10 +59,14 @@ export class AppComponent {
   readonly page = signal('');
   readonly openAiKey = model('');
   readonly dialog = inject(MatDialog);
-
+  inputMessages: Array<{[key: string]: any}> = [];
   constructor(private mcpService: McpService, private openAIService: OpenAiService, 
     private storageService: StorageService,
     private mcpElicitationService: McpElicitationService, private cdr: ChangeDetectorRef) {
+
+    this.checkScreenSize();
+    this.initializeSidebarState();
+
     this.mcpService.mcpServerInstructions$.subscribe((res) => {
     this.system_prompt = res ? res: "You are a helpful assistant. Use tools *only* when needed. \
         If you already have the answer, reply normally instead of calling a tool again.";
@@ -72,26 +79,26 @@ export class AppComponent {
           this.chatMessages[lastIndex] = this.checkToolCall(this.streamingContent);
           this.cdr.detectChanges();
           this.streamingContent = '';
-          setTimeout(() => {
-              this.chatComponent.scrollToBottom(true); // Force scroll
-            }, 0);
+          // setTimeout(() => {
+          //     this.chatComponent.scrollToBottom(); // Force scroll
+          //   }, 0);
         }
         else if(stream.status && stream.status === "started"){
           this.streamingContent += stream.message;
-          this.chatMessages.push({sender: 'bot', content: this.streamingContent, timestamp: new Date()});
+          this.chatMessages.push({role: 'bot', content: this.streamingContent, timestamp: new Date()});
           // Use setTimeout to ensure DOM is updated before scrolling
-            setTimeout(() => {
-              this.chatComponent.scrollToBottom(); // Force scroll
-            }, 0);
+            // setTimeout(() => {
+            //   this.chatComponent.scrollToBottom(); // Force scroll
+            // }, 0);
         }
         else if(stream.status && stream.status === "in_progress"){
           this.streamingContent += stream.message;
           const lastIndex = this.chatMessages.length - 1;
           this.chatMessages[lastIndex].content = this.streamingContent;
           this.cdr.detectChanges();
-            setTimeout(() => {
-              this.chatComponent.scrollToBottom(true); // Force scroll
-            }, 0);
+            // setTimeout(() => {
+            //   this.chatComponent.scrollToBottom(); // Force scroll
+            // }, 0);
         }else {
 
         }
@@ -109,12 +116,33 @@ export class AppComponent {
     }
   }
 
+  @HostListener('window:resize')
+  onResize() {
+    this.checkScreenSize();
+    this.initializeSidebarState();
+  }
+
+  private checkScreenSize() {
+    this.isMobileScreen = window.innerWidth <= 768; // You can adjust this breakpoint
+  }
+
+private initializeSidebarState() {
+    // Set sidebar state based on screen size
+    if (this.isMobileScreen) {
+      // Default open on mobile
+      this.isSidebarOpen = false;
+    } else {
+      // Default closed on larger screens
+      this.isSidebarOpen = true;
+    }
+  }
+
   checkToolCall(streamingContent: string){
-    let final_response: {sender: string,
+    let final_response: {role: string,
           content: string,
           layouts?: any,
           timestamp: Date} = {
-                              sender: "bot",
+                              role: "bot",
                               content: streamingContent,
                               timestamp: new Date()
                             }
@@ -123,14 +151,14 @@ export class AppComponent {
       const server_keys = Object.keys(jsonFormat);
       if(server_keys.includes("name") && server_keys.includes("arguments")){
         if(jsonFormat.name === "table_layout_tool"){
-            const layouts = [{
-                layout_name: "table",
-                tables: [jsonFormat.arguments]
-              }]
+            const layouts: TableLayout = {
+                type: "table",
+                data: jsonFormat.arguments
+              }
             final_response = {
-                sender: "bot",
+                role: "bot",
                 content: "",
-                layouts: layouts,
+                layouts: [layouts],
                 timestamp: new Date()
               }
             }
@@ -147,9 +175,6 @@ export class AppComponent {
   }
 
   InitializeLLM(token: string, tools: OpenAITool[] = []){
-        // this.openAIService.getOpenAIFunctions(token).subscribe(result => {
-        //   if (result.status === 200) {
-        // console.log("System prompt : ", this.system_prompt);
         this.llm_model = this.openAIService.getOpenAiClient(token)  
         if (tools.length > 0){
             try {
@@ -189,7 +214,7 @@ export class AppComponent {
   }
 
 // appendMessages(messages: any){
-//   this.chatMessages.push({ sender: 'bot', 
+//   this.chatMessages.push({ role: 'bot', 
 //       content: messages,
 //       timestamp: new Date() });
 // }
@@ -200,6 +225,10 @@ toolsList(tools: OpenAITool[]){
 testTool(tool: NamedItem | null){
   if(tool){
     this.selectedTool = tool;
+    // Only open sidebar on mobile
+    if (this.isMobileScreen) {
+      this.isSidebarOpen = true;
+    }
     this.mcpElicitationService.createFormFromSchema(tool.inputSchema, "Tool test")
   }else {
     this.selectedTool = null;
@@ -207,33 +236,50 @@ testTool(tool: NamedItem | null){
   
 }
 
-tool_response(form: {response: string, layouts?: any}){
+tool_response(form: {response: string, layouts?: Array<any>}){
+  if (this.isMobileScreen) {
+    this.isSidebarOpen = false;
+  }
+  if(form.response || form.layouts){
   this.chatMessages.push({
-          sender: 'bot',
+          role: 'bot',
           content: form.response,
           layouts: form.layouts,
           timestamp: new Date()
         });
-  setTimeout(() => {
-    this.chatComponent.scrollToBottom(true); // Force scroll
-  }, 0);
+  }else{
+
+  }
+  // setTimeout(() => {
+  //   this.chatComponent.scrollToBottom(); // Force scroll
+  // }, 0);
 }
 
 tool_request(form: {request: string}){
+  // this.isSidebarOpen = false;
+   // Only close sidebar on mobile
+  if (this.isMobileScreen) {
+    this.isSidebarOpen = false;
+  }
   this.chatMessages.push({
-        sender: 'user',
+        role: 'user',
         content: form.request,
         timestamp: new Date()
       });
 }
 
 async agentWorkflow(userInput: string) {
-  let processedText = '';
   let fullChunk: AIMessageChunk | null = null;
-  const inputMessages: any[] = [{ role: 'user', content: userInput }];
+  // let inputMessages: Array<any> = []
   const usedTools = new Set<string>();
-
-  this.chatMessages.push({ sender: 'user', content: userInput, timestamp: new Date() });
+  // if(this.chatMessages.length > 0){
+     this.inputMessages.push({ role: 'user', content: userInput });
+  // }else {
+    //  this.chatMessages.push({ role: 'user', content: userInput });
+    //  this.inputMessages = this.chatMessages;
+  // }
+  this.chatMessages.push({ role: 'user', content: userInput, timestamp: new Date() });
+  console.log("Chat message : ", this.chatMessages)
 
   try {
     let continueLoop = true;
@@ -241,10 +287,10 @@ async agentWorkflow(userInput: string) {
 
     while (continueLoop && iteration < 8) { // safety limit
       iteration++;
-      const stream = await this.llm_runnable.stream({ input: inputMessages });
+      const stream = await this.llm_runnable.stream({ input: this.inputMessages });
 
       fullChunk = null;
-      this.chatMessages.push({ sender: 'bot', content: '', timestamp: new Date() });
+      this.chatMessages.push({ role: 'bot', content: '', timestamp: new Date() });
 
       for await (const chunk of stream) {
         if (chunk instanceof AIMessageChunk) {
@@ -252,9 +298,9 @@ async agentWorkflow(userInput: string) {
           const lastIndex = this.chatMessages.length - 1;
           this.chatMessages[lastIndex].content = fullChunk.content;
           this.cdr.detectChanges();
-          setTimeout(() => {
-              this.chatComponent.scrollToBottom(true); // Force scroll
-            }, 0);
+          // setTimeout(() => {
+          //     this.chatComponent.scrollToBottom(); // Force scroll
+          //   }, 0);
         }
       }
 
@@ -286,53 +332,95 @@ async agentWorkflow(userInput: string) {
         const toolOutput = Array.isArray(ragResponse?.content)
           ? ragResponse.content.map((c: { type: string; text: string }) => c.text).join('\n')
           : JSON.stringify(ragResponse);
+          // console.log("Tool response : ", toolOutput);
+            try {
+              const extract_results = JSON.parse(ragResponse["content"][0]["text"])
+              // console.log("Extract Results : ", extract_results);
+                const server_keys = Object.keys(extract_results);
+                // console.log("Extract Results : ", server_keys);
+                if(server_keys.includes("layouts")){
 
-        if(ragResponse.layouts){
-          this.chatMessages.push({
-            sender: 'bot',
-            content: toolOutput,
-            layout: ragResponse.layouts,
-            timestamp: new Date(),
-          });
-        }else {
-          this.chatMessages.push({
-            sender: 'bot',
-            content: toolOutput,
-            timestamp: new Date(),
-          });
-        }
+                    // Create response with only specific fields (excluding layouts)
+                    const { layouts, ...contentWithoutLayouts } = extract_results;
 
+                    this.chatMessages.push({
+                        role: 'bot',
+                        content: "```json \n " + JSON.stringify(contentWithoutLayouts, null, 2) + "\n```",
+                        layouts: extract_results.layouts,
+                        timestamp: new Date(),
+                      });
+                console.log("check : ", this.chatMessages)
+                }else {
+                this.chatMessages.push({
+                    role: 'bot',
+                    content: "```json \n " + toolOutput + "\n```",
+                    timestamp: new Date(),
+                  });
+                }
+            } catch (e) {
+              // Handle plain text response
+              this.chatMessages.push({
+                    role: 'bot',
+                    content: toolOutput,
+                    timestamp: new Date(),
+                  });
+              
+            }
 
         // Add tool call + output back to LLM context
-        inputMessages.push({
+        this.inputMessages.push({
           role: 'assistant',
           type: 'function_call',
           id: toolCall.id,
           name: toolName,
-          arguments: JSON.stringify(toolArgs),
+          arguments: JSON.stringify(toolArgs)
         });
 
-        inputMessages.push({
+        this.inputMessages.push({
           role: 'tool',
           type: 'function_call_output',
           id: toolCall.id,
           output: toolOutput,
         });
+
       }
-      console.log("input messages : ", inputMessages);
+      console.log("input messages : ", this.inputMessages);
     }
 
   } catch (error) {
     console.error("Agent workflow error:", error);
     this.chatMessages.push({
-      sender: 'bot',
+      role: 'bot',
       content: 'Sorry, something went wrong while processing your request.',
       timestamp: new Date(),
     });
-    setTimeout(() => {
-      this.chatComponent.scrollToBottom(true); // Force scroll
-    }, 0);
+    // setTimeout(() => {
+    //   this.chatComponent.scrollToBottom(); // Force scroll
+    // }, 0);
   }
+}
+
+hasLayoutMessages(): boolean {
+  // Check if any messages contain layouts (maps, tables, buttons)
+  return this.chatMessages.some(message => 
+    message.layouts && 
+    (this.isTableLayout(message.layouts) || 
+     this.isButtonLayout(message.layouts) || 
+     this.isMapLayout(message.layouts))
+  );
+}
+
+// Add these type guard methods if you don't have them
+isTableLayout(layouts: any): boolean {
+  return layouts.some((layout: any) => layout.type === 'table');
+}
+
+isButtonLayout(layouts: any): boolean {
+  return layouts.some((layout: any) => layout.type === 'button');
+}
+
+isMapLayout(layouts: any): boolean {
+  return layouts.some((layout: any) => layout.type === 'map');
 }
 
 }

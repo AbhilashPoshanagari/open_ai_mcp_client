@@ -25,7 +25,9 @@ import {
   ResourceSchema,
   ElicitResultSchema,
   CreateMessageRequestSchema,
-  ProgressNotificationSchema
+  ProgressNotificationSchema,
+  ElicitRequest,
+  ElicitResult
 } from '@modelcontextprotocol/sdk/types.js';
 import { ToolformatterService } from './toolformatter.service';
 import { OriginalTool, OpenAITool } from '../constants/toolschema';
@@ -113,8 +115,11 @@ export class McpService {
         version: '1.0.0'
       }, {
         capabilities: {
-          elicitation: {},
+          elicitation: {
+            form: {}
+          },
           sampling: {},
+          completions: {}
         },
       });
 
@@ -169,7 +174,7 @@ export class McpService {
       this.resourceListChangingHandler(this.client);
 
       // Connect the client
-      await this.client.connect(this.transport, {timeout: 240000, maxTotalTimeout: 300000});
+      await this.client.connect(this.transport, {timeout: 420000, maxTotalTimeout: 420000});
       this.mcpServerInstructionsSubject.next(this.client.getInstructions())
       this.sessionId = this.transport.sessionId;
       if (this.sessionId) {
@@ -182,6 +187,7 @@ export class McpService {
       this.listTools()
       this.listPrompts()
       this.listResources()
+      // this.completion()
     } catch (error) {
       console.error('Failed to connect:', error);
       this.client = null;
@@ -194,6 +200,31 @@ export class McpService {
       throw error; // Re-throw to allow error handling by caller
     }
   }
+
+async completion(argumentName: string, partialValue: string, previousArgument: string = ""){
+  // Request completions for any argument
+  try {
+      const result = await this.client?.complete({
+      ref: {
+          type: 'ref/prompt', // or "ref/resource"
+          name: 'example' // or uri: "template://..."
+      },
+      argument: {
+          name: argumentName,
+          value: partialValue // What the user has typed so far
+      },
+      context: {
+          // Optional: Include previously resolved arguments
+          arguments: {
+              previousArg: previousArgument
+          }
+      }
+  });
+  return result;
+  } catch (error) {
+    throw new Error(`Error : ${JSON.stringify(error)}`);
+  }
+}
 
 resourceListChangingHandler(client: Client){
   client.setNotificationHandler(ResourceListChangedNotificationSchema, async (_) => {
@@ -302,7 +333,7 @@ progressNotificationHandler(client: Client){
 }
 
 initializeElicitationHandler(client: Client): void {
-  client.setRequestHandler(ElicitRequestSchema, (request: any, extra: RequestHandlerExtra<any, any>) => {
+  client.setRequestHandler(ElicitRequestSchema, (request: ElicitRequest, extra: RequestHandlerExtra<any, any>): Promise<ElicitResult> => {
 
     // Use the requestId from extra to uniquely identify this request
     const currentRequestId: string | number = extra.requestId;
@@ -314,7 +345,19 @@ initializeElicitationHandler(client: Client): void {
     // console.log("Extras : ", extra);
     
     // Return a Promise that resolves when we get a response from the UI
-    return new Promise((resolve) => {
+    return new Promise<ElicitResult>((resolve, reject) => {
+
+      // this.elicitationQueue.push({
+      //       request,
+      //       resolve,
+      //       reject
+      //   });
+
+        // Signal the elicitation loop that there's work to do
+        // if (elicitationQueueSignal) {
+        //     elicitationQueueSignal();
+        //     elicitationQueueSignal = null;
+        // }
       // Track if we've already resolved to prevent duplicate handling
       let isResolved = false;
       // Set up a timeout using setTimeout (simple approach)
@@ -412,7 +455,7 @@ samplingCapability(client: Client){
     }));
 }
 
-private handleElicitRequest(request: any, currentRequestId: string | number): void {
+private handleElicitRequest(request: ElicitRequest, currentRequestId: string | number): void {
     const schema = request.params.requestedSchema;
     const fields = this.parseSchemaToFields(schema);
     
@@ -524,21 +567,24 @@ private parseSchemaToFields(schema: any): any[] {
       params: {}
     }, ListResourcesResultSchema)
       for(const resource of resources.resources) {
-        resource['displayName'] = getDisplayName(resource)
+        console.log("Resources : ", resource);
+        resource['displayName'] = getDisplayName(resource);
       }
     this.resourceSubject.next(resources.resources)
   }
 
-  readResource(resourceLink: ResourceLink) {
+readResource(resourceLink: ResourceLink) {
     if (!this.client) {
       throw new Error('Client not connected');
     }
+    // this.client.readResource(resourceLink)
     return this.client.request({
       method: 'resources/read',
       params: {
         resourceLink
       }
     }, ReadResourceResultSchema);
+
   }
 
 // Update your disconnect method
