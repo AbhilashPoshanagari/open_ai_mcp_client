@@ -35,17 +35,105 @@ Display structured tabular data with customizable columns and rows.
 **Example:**
 ```typescript
     {
-      type: 'table',
-      data: {
-        table_name: 'Analysis Results',
-        column_names: ['ID', 'Name', 'Value'],
-        data: [
-          ['1', 'Result A', 42],
-          ['2', 'Result B', 87]
-        ]
-      }
-    }
+  "type": "table",
+  "data": {
+    "table_name": "Employee Performance Dashboard",
+    "column_names": [
+      "Employee ID",
+      "Full Name",
+      "Department",
+      "Performance Score",
+      "Hire Date",
+      "Active Status"
+    ],
+    "data": [
+      [
+        "EMP001",
+        "John Smith",
+        "Engineering",
+        92.5,
+        "2023-01-15",
+        True
+      ],
+      [
+        "EMP002",
+        "Maria Garcia",
+        "Marketing",
+        88.0,
+        "2022-06-22",
+        True
+      ],
+      [
+        "EMP003",
+        "David Chen",
+        "Sales",
+        95.2,
+        "2021-11-30",
+        False
+      ],
+      [
+        "EMP004",
+        "Sarah Johnson",
+        "Human Resources",
+        79.8,
+        "2023-03-10",
+        True
+      ],
+      [
+        "EMP005",
+        "Robert Kim",
+        "Engineering",
+        91.0,
+        "2022-08-05",
+        True
+      ],
+      [
+        "EMP006",
+        "Lisa Williams",
+        "Finance",
+        86.5,
+        "2020-12-18",
+        True
+      ],
+      [
+        "EMP007",
+        "Michael Brown",
+        "Operations",
+        74.3,
+        "2023-05-14",
+        True
+      ],
+      [
+        "EMP008",
+        "Emma Wilson",
+        "Marketing",
+        89.7,
+        "2021-09-22",
+        False
+      ],
+      [
+        "EMP009",
+        "James Taylor",
+        "Engineering",
+        94.1,
+        "2022-02-28",
+        True
+      ],
+      [
+        "EMP010",
+        "Sophia Martinez",
+        "Sales",
+        81.6,
+        "2023-07-03",
+        True
+      ]
+    ]
+  }
+}
 ```
+
+## Table UI
+<img width="644" height="513" alt="image" src="https://github.com/user-attachments/assets/231ab6e5-263c-40e3-ae44-7bf48928333b" />
 
 **Example Usage:**
 - Display query results
@@ -76,6 +164,10 @@ Add clickable action buttons with links or deep links.
               }
         }
 ```
+
+## Button UI
+<img width="109" height="90" alt="image" src="https://github.com/user-attachments/assets/b4e7928d-fdb0-4e2e-9f08-faacc08ff169" />
+
 
 **Example Usage:**
 - External navigation to maps, documents, or applications
@@ -164,63 +256,68 @@ Visualize geospatial data using Leaflet maps with multiple layers and features.
 **Scenario:** A chatbot helps users find nearby coffee shops and displays them on an interactive map.
 
 ```json
-{
-  "type": "map",
-  "data": {
-    "title": "Nearby Coffee Shops",
-    "features": [
-      {
-        "id": "shop_1",
-        "name": "Brew & Bean",
-        "type": "Coffee Shop",
-        "coordinates": [-73.9857, 40.7484],
-        "properties": {
-          "address": "123 Main St, New York, NY",
-          "rating": 4.5,
-          "hours": "7am-9pm",
-          "phone": "(555) 123-4567",
-          "specialty": "Artisanal Pour-Over"
-        },
-        "style": {
-          "color": "#8B4513",
-          "fillColor": "#D2691E",
-          "radius": 12,
-          "fillOpacity": 0.7
+            {
+            "type": "map",
+            "data": {
+                "title": "Nearby Coffee Shops",
+                "features": [
+                {
+                    "id": "shop_1",
+                    "name": "Brew & Bean",
+                    "type": "Coffee Shop",
+                    "coordinates": [40.7484, -73.9857],
+                    "properties": {
+                    "address": "123 Main St, New York, NY",
+                    "rating": 4.5,
+                    "hours": "7am-9pm",
+                    "phone": "(555) 123-4567",
+                    "specialty": "Artisanal Pour-Over"
+                    },
+                    "style": {
+                    "color": "#8B4513",
+                    "fillColor": "#D2691E",
+                    "radius": 12,
+                    "fillOpacity": 0.7
+                    }
+                },
+                {
+                    "id": "shop_2",
+                    "name": "Urban Roast",
+                    "type": "Coffee Shop",
+                    "coordinates": [40.7523, -73.9821],
+                    "properties": {
+                    "address": "456 Broadway, New York, NY",
+                    "rating": 4.2,
+                    "hours": "6am-10pm",
+                    "phone": "(555) 987-6543",
+                    "specialty": "Cold Brew"
+                    },
+                    "style": {
+                    "color": "#654321",
+                    "fillColor": "#8B4513",
+                    "radius": 10,
+                    "fillOpacity": 0.7
+                    }
+                }
+                ],
+                "center": [40.7484, -73.9857],
+                "zoom": 14,
+                "height": "450px",
+                "wmsLayers": [
+                {
+                    "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                    "layers": "osm",
+                    "attribution": "© OpenStreetMap contributors"
+                }
+                ]
+            }
+
         }
-      },
-      {
-        "id": "shop_2",
-        "name": "Urban Roast",
-        "type": "Coffee Shop",
-        "coordinates": [-73.9821, 40.7523],
-        "properties": {
-          "address": "456 Broadway, New York, NY",
-          "rating": 4.2,
-          "hours": "6am-10pm",
-          "phone": "(555) 987-6543",
-          "specialty": "Cold Brew"
-        },
-        "style": {
-          "color": "#654321",
-          "fillColor": "#8B4513",
-          "radius": 10,
-          "fillOpacity": 0.7
-        }
-      }
-    ],
-    "center": [-73.9857, 40.7484],
-    "zoom": 14,
-    "height": "450px",
-    "wmsLayers": [
-      {
-        "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        "layers": "osm",
-        "attribution": "© OpenStreetMap contributors"
-      }
-    ]
-  }
-}
 ```
+
+## Map UI
+<img width="894" height="435" alt="map_layout_near_by_coffee_shop" src="https://github.com/user-attachments/assets/915e335e-03ce-4548-a7e7-e8ae2f11e7d6" />
+
 
 ## Real-World Applications
 
@@ -426,70 +523,120 @@ Each action must follow this exact structure:
 ### Complete Form Example
 
 ```javascript
-{
-  "type": "form",
-  "data": {
-    "title": "User Registration",
-    "schema": {
-      "formWidgets": [
-        {
-          "id": "name",
-          "label": "Full Name",
-          "type": "textBox",
-          "isRequired": true,
-          "placeholder": "Enter your name"
+    {
+      "type": "form",
+      "data": {
+        "title": "Employee Onboarding Form",
+        "schema": {
+          "title": "Employee Onboarding Form",
+          "description": "Form created by HR Department",
+          "type": "object",
+          "properties": {
+            "full_name": {
+              "title": "Full Name",
+              "description": "Enter your full legal name",
+              "type": "string",
+              "widgetType": "textBox",
+              "originalId": "emp_name_001",
+              "position": 1,
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "email_address": {
+              "title": "Email Address",
+              "description": "Enter your company email",
+              "type": "string",
+              "widgetType": "email",
+              "originalId": "emp_email_002",
+              "position": 2,
+              "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+            },
+            "department": {
+              "title": "Department",
+              "description": "Select your department",
+              "type": "string",
+              "widgetType": "select",
+              "originalId": "emp_dept_003",
+              "position": 3,
+              "options": [
+                {"displayValue": "Engineering", "value": "eng"},
+                {"displayValue": "Sales", "value": "sales"},
+                {"displayValue": "Marketing", "value": "marketing"},
+                {"displayValue": "Human Resources", "value": "hr"}
+              ]
+            },
+            "start_date": {
+              "title": "Start Date",
+              "description": "Select your employment start date",
+              "type": "string",
+              "widgetType": "date",
+              "originalId": "emp_date_004",
+              "position": 4
+            },
+            "terms_accepted": {
+              "title": "Accept Terms & Conditions",
+              "description": "Please read and accept the terms",
+              "type": "boolean",
+              "widgetType": "checkbox",
+              "originalId": "emp_terms_005",
+              "position": 5,
+              "default": False
+            },
+            "additional_notes": {
+              "title": "Additional Notes",
+              "description": "Any special requirements or notes",
+              "type": "string",
+              "widgetType": "textArea",
+              "originalId": "emp_notes_006",
+              "position": 6,
+              "maxLength": 500
+            }
+          },
+          "required": ["full_name", "email_address", "department", "terms_accepted"]
         },
-        {
-          "id": "email",
-          "label": "Email Address",
-          "type": "email",
-          "isRequired": true,
-          "placeholder": "user@example.com"
-        }
-      ],
-      "formInfo": {
-        "name": "User Registration Form",
-        "version": "1.0"
-      }
-    },
-    "metadata": {
-      "form_id": "form_12345",
-      "form_name": "User Registration",
-      "createdBy": "system",
-      "version": "1.0",
-      "description": "Register new users",
-      "totalFields": 2,
-      "comment": "Required for system access"
-    },
-    "actions": {
-      "submit": {
-        "type": "tool",
-        "title": "Register User",
-        "tool_name": "create_user_record",
-        "description": "Submit registration form",
-        "params": {
-          "user_data": {
-            "type": "json"
+        "metadata": {
+          "form_id": "emp_onboard_2024_v2",
+          "form_name": "Employee Onboarding Form",
+          "createdBy": "HR System",
+          "version": "2.1",
+          "description": "Complete employee onboarding and registration process",
+          "totalFields": 6,
+          "comment": "All widget types recognized successfully."
+        },
+        "actions": {
+          "submit": {
+            "type": "tool",
+            "title": "Submit Onboarding",
+            "tool_name": "add_record",
+            "description": "Submit Employee Onboarding Form",
+            "params": {
+              "form_data": {
+                "type": "json"
+              },
+              "form_id": {
+                "type": "metadata",
+                "field": "form_id"
+              },
+              "form_name": {
+                "type": "metadata",
+                "field": "form_name"
+              }
+            }
           },
-          "registration_form_id": {
-            "type": "metadata",
-            "field": "form_id"
-          },
-          "form_version": {
-            "type": "metadata",
-            "field": "version"
+          "cancel": {
+            "type": "cancel",
+            "title": "Cancel",
+            "description": "Cancel onboarding process"
           }
         }
-      },
-      "cancel": {
-        "type": "cancel",
-        "title": "Cancel Registration",
-        "description": "Cancel user registration"
       }
     }
-  }
-}
 ```
+
+## Form UI
+
+<img width="305" height="574" alt="form_layout_UI" src="https://github.com/user-attachments/assets/f7637e0e-5caf-4218-8056-2c764a53e5d5" />
+
 
 ## Data Format Validation
 
