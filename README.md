@@ -98,7 +98,7 @@ Visualize geospatial data using Leaflet maps with multiple layers and features.
 ```
 
 **Supported Features:**
-- Custom markers and polygons
+- Custom markers and feature.
 - WMS (Web Map Service) layers
 - Interactive feature properties
 - Custom styling options
@@ -130,18 +130,14 @@ Interactive forms for data collection with various input types and validation.
 
 **Supported Form Widgets:**
 - TextBox
-- Status indicator
 - Dropdown with dynamic options
 - Checkbox
 - Radio buttons
 - TextArea
 - Number input
-- Date picker
-- Email input
 
 **Form Features:**
 - Field validation and requirements
-- Dependent fields
 - Dynamic dropdowns
 - Default values and placeholders
 - Custom submit/cancel actions
@@ -157,7 +153,7 @@ All layout data must adhere to the specified TypeScript interfaces. The frontend
 ## Setup and Configuration
 
 ### Prerequisites
-- Node.js (v16 or higher)
+- Node.js (v22 or higher)
 - OpenAI API key
 - (Optional) MCP server URL for extended capabilities
 
@@ -180,7 +176,7 @@ All layout data must adhere to the specified TypeScript interfaces. The frontend
 
 4. **Start the application**
    ```bash
-   npm start
+   ng serve
    ```
 
 ### Configuration Options
@@ -271,43 +267,6 @@ const messageWithForm = {
 - All interactive features require proper data structure validation
 - Map features require Leaflet.js compatibility
 
-## Development
-
-### Project Structure
-```
-src/
-├── components/     # React components
-├── layouts/       # Layout type definitions and handlers
-├── services/      # API and MCP services
-├── models/        # TypeScript interfaces
-└── utils/         # Helper functions and validators
-```
-
-### Adding New Layout Types
-1. Define the interface in `message.model.ts`
-2. Create a corresponding React component
-3. Add validation logic
-4. Update the layout renderer
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Ensure all layouts follow the defined interfaces
-4. Add validation for new data formats
-5. Submit a pull request
-
 ## License
-
-
-
-## Support
-
-For issues, feature requests, or questions:
-- Check the existing issues
-- Review the interface definitions in `message.model.ts`
-- Ensure data formats match the specified structures
-
----
 
 *Note: This chatbot requires proper OpenAI API key configuration to function. MCP features are optional but enhance capabilities when configured.*
