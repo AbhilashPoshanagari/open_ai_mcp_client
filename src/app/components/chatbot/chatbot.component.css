@@ -1,6 +1,7 @@
 .chat-messages {
   flex: 1;
   overflow-y: auto;
+  /* padding: 12px 0; */
   padding: 10px 20px 20px 12px;
   display: flex;
   flex-direction: column;
@@ -200,12 +201,12 @@
 }
 
 .map-container {
-  width: 100% !important;
+  width: 90% !important;
 }
 
 /* Markdown content optimization */
 .message-text {
-  max-width: 100%;
+  max-width: 90%;
 }
 
 .message-text ::ng-deep * {
@@ -451,4 +452,61 @@
 .message-text ::ng-deep img {
   max-width: 100%;
   height: auto;
+}
+
+.form-container {
+  margin: 10px 0;
+}
+
+.form-wrapper {
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  padding: 15px;
+  background: #f8f9fa;
+  margin: 10px 0;
+}
+
+.form-header {
+  font-weight: 600;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #dee2e6;
+  color: #495057;
+}
+
+.form-error {
+  color: #dc3545;
+  padding: 10px;
+  background: #f8d7da;
+  border-radius: 4px;
+  margin: 5px 0;
+}
+
+/* Ensure the elicitation component fits well in chat */
+.elicitation-container {
+  max-width: 100%;
+}
+
+/* Adjust form styling for chat context */
+.elicitation-container .form-container {
+  padding: 0;
+}
+
+.elicitation-container .form-control {
+  font-size: 14px;
+}
+
+.elicitation-container .btn {
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
+/* In your chatbot CSS */
+.form-message-container {
+  /* existing styles */
+  position: relative;
+}
+
+.has-active-form {
+  border-left: 4px solid #007bff;
 }
