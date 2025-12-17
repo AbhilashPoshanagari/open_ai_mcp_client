@@ -28,6 +28,7 @@
             ],
             "styles": [
               "src/styles.css",
+              "src/custom-theme.scss",
               "node_modules/prismjs/themes/prism-okaidia.css",
               "node_modules/leaflet/dist/leaflet.css"
             ],
@@ -43,7 +44,7 @@
                 {
                   "type": "initial",
                   "maximumWarning": "8MB",
-                  "maximumError": "4MB"
+                  "maximumError": "5MB"
                 },
                 {
                   "type": "anyComponentStyle",

@@ -1,8 +1,10 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { FormLayout } from '../models/message.model';
+import { FormAction, FormActions, FormLayout } from '../models/message.model';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-
+import { finalize, Observable, of } from 'rxjs';
+import { RestApiService } from '../../services/rest-api.service';
+import { ApiFrammingService } from '../../services/api-framming.service';
 @Component({
   selector: 'app-chat-form',
   imports: [CommonModule, ReactiveFormsModule],
@@ -13,14 +15,19 @@ export class ChatFormComponent {
   @Input() formLayout!: FormLayout;
   @Output() formSubmitted = new EventEmitter<{toolName: string, params: any}>();
   @Output() formCancelled = new EventEmitter<void>();
+  @Output() kanbanAction = new EventEmitter<any>();
+  @Output() kanbanBoardUpdated = new EventEmitter<any>();
 
   formFields: any[] = [];
   showMetadata = false;
   isSubmitting = false;
   isSubmitted = false; 
   form: FormGroup;
-
-  constructor(private fb: FormBuilder) {
+  metadataEntries: any[] = [];
+  formSubmittedMessage: string = '';
+  constructor(private fb: FormBuilder, 
+    private restApiService: RestApiService,
+    private apiFrammingService: ApiFrammingService) {
     this.form = this.fb.group({});
   }
 
@@ -35,7 +42,8 @@ export class ChatFormComponent {
     const schema = this.formLayout.data.schema;
     this.formFields = [];
     const formGroupConfig: any = {};
-
+    const metadata = this.formLayout.data.metadata || {};
+    this.metadataEntries = this.getMetadataEntries(metadata);
     if (schema?.properties) { // Check for properties instead of schema directly
       // Convert the properties object to array and sort by position
       this.formFields = Object.keys(schema.properties).map(key => {
@@ -65,12 +73,12 @@ export class ChatFormComponent {
           validators.push(Validators.email);
         }
 
-        // Handle different field types for default values
-        let defaultValue: string | boolean | number | null = '';
-        if (field.type === 'number') {
-          defaultValue = null;
-        } else if (field.type === 'boolean') {
-          defaultValue = false;
+        let defaultValue = fieldConfig.defaultValue;
+
+        if (defaultValue === undefined || defaultValue === null) {
+          if (field.type === 'number') defaultValue = null;
+          else if (field.type === 'boolean') defaultValue = false;
+          else defaultValue = '';
         }
 
         formGroupConfig[field.key] = [defaultValue, validators];
@@ -137,11 +145,33 @@ export class ChatFormComponent {
       this.isSubmitting = true;
       
       const submitAction = this.formLayout.data.actions?.submit;
-      // const formId = this.formLayout.data.metadata?.formId;
       const metadata = this.formLayout.data.metadata || {};
+      const form_info = this.formLayout.data.form_info || {};
+      const formData = this.form.value;
+
+      if (!submitAction) {
+        console.error('No submit action defined');
+        this.isSubmitting = false;
+        return;
+      }
 
       if (submitAction?.type === 'tool' && submitAction.tool_name) {
-        const formData = this.form.value;
+        this.toolExecution(submitAction, metadata);
+      }else if(submitAction?.type === 'api' && submitAction.url){
+        // Implement API submission logic here if needed
+        this.api_call_request(submitAction, metadata, form_info, formData);
+      }
+
+      this.isSubmitting = false;
+    } else {
+      // Mark all fields as touched to show validation errors
+      this.markFormGroupTouched(this.form);
+    }
+  }
+
+  private toolExecution(submitAction: FormAction, metadata: {[key: string]: string}): void {
+    // Placeholder for any pre-submission processing if needed
+            const formData = this.form.value;
             // Validate that at least one parameter is of type 'json' or 'form_data'
         if (!this.hasJsonParameter(submitAction.params)) {
           console.error('Form submission requires at least one json type parameter');
@@ -151,14 +181,14 @@ export class ChatFormComponent {
 
         // Build tool parameters based on server instructions
         const toolParams = this.buildToolParameters(
-          this.form.value,
+          formData,
           submitAction.params,
           metadata
         );
 
       try {
           this.formSubmitted.emit({
-          toolName: submitAction.tool_name,
+          toolName: submitAction.tool_name? submitAction.tool_name : '',
           params: toolParams
         });
         // Mark form as submitted and readonly
@@ -168,13 +198,39 @@ export class ChatFormComponent {
           console.error('Form submission error:', error);
           this.isSubmitting = false;
       }
-    }
+  }
 
-      this.isSubmitting = false;
-    } else {
-      // Mark all fields as touched to show validation errors
-      this.markFormGroupTouched(this.form);
-    }
+  private api_call_request(action: FormAction, metadata: {[key: string]: string}, form_info: {[key: string]: string}, formData: {[key: string]: string}): void {
+            // Validate that at least one parameter is of type 'json' or 'form_data'
+        const requestConfig = this.apiFrammingService.buildApiRequest(action, metadata, form_info, formData);
+        if (!requestConfig.success) {
+          console.error('Failed to build request:', requestConfig.errors);
+          this.isSubmitting = false;
+          return;
+        }
+    this.executeApiAction(requestConfig)
+      .pipe(
+        finalize(() => {
+          this.isSubmitting = false;
+        })
+      )
+      .subscribe({
+        next: (response: any) => {
+          console.log('Form submitted successfully:', response);
+          const server_message = this.apiFrammingService.handleApiResponse(response, action);
+          if(response && response.status === 200){
+            this.formSubmittedMessage = server_message.message || 'Form submitted successfully.';
+            this.isSubmitted = true;
+            this.disableForm();
+          }else {
+            this.formSubmittedMessage = server_message.message || 'Form submittion failed.';
+            console.error('API request failed:', response.error);
+          }
+        },
+        error: (error: any) => {
+          console.error('Form submission failed:', error);
+        }
+      });
   }
 
    /**
@@ -197,7 +253,6 @@ export class ChatFormComponent {
     }
 
     Object.keys(paramsConfig).forEach(paramKey => {
-      console.log("paramKey : ", paramKey);
       const paramConfig = paramsConfig[paramKey];
       
       switch (paramConfig.type) {
@@ -209,12 +264,13 @@ export class ChatFormComponent {
         
         case 'metadata':
           // Get value from metadata field
-          toolParams[paramKey] = this.getMetadataValue(paramConfig, metadata);
+          console.log("metadata ", toolParams[paramKey])
+          toolParams[paramKey] = metadata[paramConfig.field];
           break;
         
-        case 'form_field':
+        case 'form_info':
           // Get specific field from form data
-          toolParams[paramKey] = this.getFormFieldValue(paramConfig, formData);
+          toolParams[paramKey] = formData[paramConfig.field];
           break;
         
         default:
@@ -225,40 +281,28 @@ export class ChatFormComponent {
     return toolParams;
   }
 
-  private getMetadataValue(paramConfig: any, metadata: any): any {
-    console.log("Params config : ", paramConfig);
-    console.log("metadata : ", metadata);
 
-    const metadataField = paramConfig.field || paramConfig.source;
+  private executeApiAction(requestConfig: any): Observable<any> {
+  if (!requestConfig.url) {
+    return of({ success: false, error: 'API action missing URL' });
+  }
+
+  const method = requestConfig.method?.toUpperCase() || 'POST';
+  const headers = requestConfig.headers || {};
+  const payload = requestConfig.payload;
+
+  switch (method) {
+    case 'GET':
+      return this.restApiService.getRequest(requestConfig.url, headers);
+
+    case 'POST':
+      return this.restApiService.postRequest(requestConfig.url, payload, headers);
+
     
-    if (metadataField) {
-      // Support nested metadata fields (e.g., 'formId' or 'user.id')
-      if (metadataField.includes('.')) {
-        return this.getNestedValue(metadata, metadataField);
-      }
-      return metadata[metadataField];
-    }
-    
-    // If no specific field specified, return entire metadata
-    return metadata;
+    default:
+      return of({ success: false, error: `Unsupported HTTP method: ${method}` });
   }
-
-   /**
-   * Get nested object value using dot notation
-   */
-  private getNestedValue(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => {
-      return current && current[key] !== undefined ? current[key] : null;
-    }, obj);
-  }
-
-    /**
-   * Get specific field from form data
-   */
-  private getFormFieldValue(paramConfig: any, formData: any): any {
-    const fieldName = paramConfig.field || paramConfig.source;
-    return formData[fieldName];
-  }
+}
 
   onCancel(): void {
     this.formCancelled.emit();
@@ -296,6 +340,14 @@ export class ChatFormComponent {
       const control = this.form.get(key);
       control?.enable();
     });
+  }
+
+  onKanbanAction(event: any) {
+    this.kanbanAction.emit(event);
+  }
+  
+  onKanbanBoardUpdated(event: any) {
+    this.kanbanBoardUpdated.emit(event);
   }
 
 }

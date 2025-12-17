@@ -7,43 +7,34 @@
             'map-layout-active': hasMapLayout(message)}">
       <div class="message-content">
         <div class="message-text markdown-body">
-          <markdown *ngIf="message.content && typeof message.content === 'string'" [data]="message.content"></markdown>
+          @if (message.content && typeof message.content === 'string') {
+            <markdown [data]="message.content"></markdown>
+          }
         </div>
 
-        <!-- Tables with Pipes -->
-        @if (message.layouts | filterTables; as tables) {
-          <div class="table-container">
-            @for (table of tables; track table) {
-              <div class="table-wrapper">
-                @if (table.data.table_name) {
-                  <div class="table-header">Table: {{ table.data.table_name }}</div>
-                }
-                @if (table | hasValidTableStructure) {
-                  <table class="dynamic-table">
-                    <thead>
-                      <tr>
-                        @for (header of table.data.column_names; track header) {
-                          <th [title]="header">{{ header }}</th>
-                        }
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (row of table.data.data; track $index) {
-                        <tr>
-                          @for (cell of row; track $index) {
-                            <td [title]="cell">{{ cell }}</td>
-                          }
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                } @else {
-                  <div class="table-error">Invalid table structure</div>
-                }
-              </div>
-            }
-          </div>
-        }
+        <!-- Updated chatbot HTML for AG Grid tables -->
+          @if (message.layouts | filterTables; as tables) {
+            <div class="tables-container">
+              @for (table of tables; track $index) {
+                <div class="table-wrapper">
+                  <div class="workspace-action">
+                    <button mat-icon-button (click)="selectLayout(table); $event.stopPropagation()" 
+                            class="open-workspace-btn" title="Open in Workspace">
+                      <mat-icon>open_in_new</mat-icon>
+                    </button>
+                  </div>
+                  @if (table | hasValidTableStructure) {
+                    <app-chat-data-table [tableData]="table.data" />
+                  } @else {
+                    <div class="table-error">
+                      <i class="error-icon">⚠️</i>
+                      Invalid table structure
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
 
         <!-- Buttons with Pipes -->
         @if (message.layouts | filterButtons; as buttons) {
@@ -51,8 +42,8 @@
             @for (button of buttons; track button) {
               <div class="button-wrapper">
                 @if (button | hasValidButtonStructure) {
-                  <a 
-                    [href]="button | getButtonLink" 
+                  <a
+                    [href]="button | getButtonLink"
                     [target]="(button | isExternalLink) ? '_blank' : '_self'"
                     class="dynamic-button"
                     [attr.rel]="(button | isExternalLink) ? 'noopener noreferrer' : null">
@@ -66,18 +57,24 @@
           </div>
         }
 
-     <!-- Maps with optimized pipes -->
+        <!-- Maps with optimized pipes -->
         @if (message.layouts | filterMaps; as maps) {
           <div class="map-container">
             @for (mapLayout of maps; track mapLayout; let mapIndex = $index) {
               @if (mapLayout | isValidMapLayout) {
-                <div class="map-wrapper">
+                <div class="map-wrapper" >
+                  <div class="workspace-action">
+                    <button mat-icon-button (click)="selectLayout(mapLayout); $event.stopPropagation()" 
+                            class="open-workspace-btn" title="Open in Workspace">
+                      <mat-icon>open_in_new</mat-icon>
+                    </button>
+                  </div>
                   <!-- Use hasMapTitle pipe for condition -->
                   @if (mapLayout | hasMapTitle) {
                     <div class="map-header">{{ mapLayout | getMapTitle }}</div>
                   }
                   <!-- Use individual pipes for each property -->
-                  <app-map 
+                  <app-map
                     [featureDetails]="mapLayout | getMapFeatures"
                     [wmsLayers]="mapLayout | getMapWmsLayers"
                     [center]="mapLayout | getMapCenter"
@@ -94,36 +91,56 @@
           </div>
         }
 
-        <!-- Forms with pipes -->
-        <!-- @if ((message.layouts || []) | filterForms; as forms) {
-          <div class="form-container">
-            @for (formLayout of forms; track formLayout; let formIndex = $index) {
-              @if (formLayout | isValidFormLayout) {
-                <app-chat-form 
-                  [formLayout]="formLayout"
-                  (formSubmitted)="onChatFormSubmitted($event, message)"
-                  (formCancelled)="onChatFormCancelled()">
-                </app-chat-form>
-              } @else {
-                <div class="form-error">Invalid form layout</div>
-              }
-            }
-          </div>
-        } -->
-              <!-- Form layouts -->
-    @if (message.layouts && message.layouts.length > 0) {
+        <!-- Form layouts -->
+        @if (message.layouts && message.layouts.length > 0) {
           <div class="form-layouts">
             @for (layout of message.layouts | filterForms; track $index) {
-              <div class="form-container">
+              <div class="form-container" >
                 @if (layout | isValidFormLayout) {
-                  <app-chat-form 
+                  <div class="workspace-action">
+                    <button mat-icon-button (click)="selectLayout(layout); $event.stopPropagation()" 
+                            class="open-workspace-btn" title="Open in Workspace">
+                      <mat-icon>open_in_new</mat-icon>
+                    </button>
+                  </div>
+                  <app-chat-form
                     [formLayout]="layout"
                     (formSubmitted)="onChatFormSubmitted($event, message)"
-                    (formCancelled)="onChatFormCancelled()">
+                    (formCancelled)="onChatFormCancelled()"
+                    (kanbanAction)="onKanbanAction($event)"
+                    (kanbanBoardUpdated)="onKanbanBoardUpdated($event)">
                   </app-chat-form>
                 } @else {
                   <div class="invalid-form">
                     Invalid form layout - check console for details
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+
+        <!-- Kanban layouts (NEW) -->
+        @if (message.layouts && message.layouts.length > 0) {
+          <div class="kanban-layouts">
+            @for (layout of message.layouts | filterKanban; track $index) {
+              <div class="kanban-container">
+                @if (layout | isKanbanLayout) {
+                  <div class="workspace-action">
+                    <button mat-icon-button (click)="selectLayout(layout); $event.stopPropagation()" 
+                            class="open-workspace-btn" title="Open in Workspace">
+                      <mat-icon>open_in_new</mat-icon>
+                    </button>
+                  </div>
+                  <app-chat-kanban
+                    [kanbanLayout]="layout"
+                    (actionTriggered)="onKanbanAction($event)"
+                    (boardUpdated)="onKanbanBoardUpdated($event)">
+                  </app-chat-kanban>
+                } @else {
+                  <div class="invalid-kanban">
+                    Invalid kanban layout
                   </div>
                 }
               </div>

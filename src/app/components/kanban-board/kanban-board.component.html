@@ -1,0 +1,322 @@
+<div class="kanban-container" [class.compact]="settings.compact_view">
+  <!-- Board Header -->
+  <div class="kanban-header">
+    <div class="board-info">
+      <h2>{{ data.board_title }}</h2>
+      @if (data.metadata) {
+        <div class="board-meta">
+          <span class="meta-item">
+            <i class="icon-cards"></i> {{ totalCards }} cards
+          </span>
+          <span class="meta-item">
+            <i class="icon-updated"></i> Updated {{ formatDate(data.metadata.updated_at) }}
+          </span>
+          @if (data.metadata.created_by) {
+            <span class="meta-item">
+              <i class="icon-user"></i> {{ data.metadata.created_by }}
+            </span>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="board-actions">
+      <button class="btn-settings" (click)="toggleSettings()">
+        <i class="icon-settings"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Settings Panel -->
+  @if (showSettings) {
+    <div class="settings-panel">
+      <div class="settings-content">
+        <h3>Board Settings</h3>
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" [(ngModel)]="settings.compact_view" />
+            Compact View
+          </label>
+        </div>
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" [(ngModel)]="settings.show_wip_limits" />
+            Show WIP Limits
+          </label>
+        </div>
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" [(ngModel)]="settings.show_avatars" />
+            Show Avatars
+          </label>
+        </div>
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" [(ngModel)]="settings.auto_save" />
+            Auto Save Changes
+          </label>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Board Columns -->
+  <div class="kanban-board"
+    cdkDropListGroup
+    [class.columns-overflow]="data.columns.length > 4">
+
+    @for (column of data.columns; track column) {
+      <div
+        class="kanban-column"
+        [style.border-top-color]="column.color || '#e0e0e0'">
+        <!-- Column Header -->
+        <div class="column-header">
+          <div class="column-title">
+            @if (column.icon) {
+              <span class="column-icon">
+                <i [class]="'icon-' + column.icon"></i>
+              </span>
+            }
+            <h3>{{ column.title }}</h3>
+            <span class="card-count">{{ column.cards.length }}</span>
+          </div>
+          <div class="column-actions">
+            @if (settings.show_wip_limits && column.wip_limit) {
+              <span class="wip-limit">
+                WIP: {{ column.cards.length }}/{{ column.wip_limit }}
+              </span>
+            }
+          </div>
+        </div>
+        <!-- WIP Limit Warning -->
+        @if (column.wip_limit && column.cards.length > column.wip_limit) {
+          <div class="wip-warning"
+            >
+            <i class="icon-warning"></i>
+            Exceeds WIP limit by {{ column.cards.length - column.wip_limit }}
+          </div>
+        }
+        <!-- Cards Container -->
+        <div class="cards-container"
+          cdkDropList
+          [id]="'cdk-drop-list-' + column.id"
+          [cdkDropListData]="column.cards"
+          [cdkDropListConnectedTo]="getConnectedLists()"
+          (cdkDropListDropped)="drop($event)">
+          <!-- Cards -->
+          @for (card of column.cards; track card) {
+            <div
+              class="kanban-card"
+              cdkDrag
+              [cdkDragData]="card"
+              (click)="openCardDetail(card)"
+              [class.card-priority-low]="card.priority === 'low'"
+              [class.card-priority-medium]="card.priority === 'medium'"
+              [class.card-priority-high]="card.priority === 'high'"
+              [class.card-priority-critical]="card.priority === 'critical'">
+              <!-- Drag Handle -->
+              <div class="card-drag-handle" cdkDragHandle>
+                <i class="icon-drag"></i>
+              </div>
+              <!-- Card Content -->
+              <div class="card-content">
+                <div class="card-header">
+                  <h4 class="card-title">{{ card.title }}</h4>
+                  <button class="btn-card-menu"
+                    (click)="$event.stopPropagation(); openCardMenu(card, $event)">
+                    <i class="icon-more"></i>
+                  </button>
+                </div>
+                @if (card.description) {
+                  <p class="card-description">
+                    {{ card.description | truncate:100 }}
+                  </p>
+                }
+                <!-- Tags -->
+                @if (card.tags && card.tags.length) {
+                  <div class="card-tags">
+                    @for (tag of card.tags.slice(0, 3); track tag) {
+                      <span
+                        class="tag"
+                        [style.background]="getTagColor(tag)">
+                        {{ tag }}
+                      </span>
+                    }
+                    @if (card.tags.length > 3) {
+                      <span class="tag-more">
+                        +{{ card.tags.length - 3 }}
+                      </span>
+                    }
+                  </div>
+                }
+                <!-- Card Footer -->
+                <div class="card-footer">
+                  <div class="footer-left">
+                    <!-- Assignee Avatar -->
+                    @if (settings.show_avatars && card.assignee) {
+                      <div
+                        class="assignee-avatar"
+                        [title]="card.assignee">
+                        {{ getInitials(card.assignee) }}
+                      </div>
+                    }
+                    <!-- Due Date -->
+                    @if (card.due_date) {
+                      <span class="due-date"
+                        [class.overdue]="isOverdue(card.due_date)">
+                        <i class="icon-calendar"></i>
+                        {{ formatDueDate(card.due_date) }}
+                      </span>
+                    }
+                  </div>
+                  <div class="footer-right">
+                    <!-- Attachments -->
+                    @if (card.attachments && card.attachments.length > 0) {
+                      <span class="card-attachments">
+                        <i class="icon-attachment"></i>
+                        {{ getCardAttachmentsLength(card) }}
+                      </span>
+                    }
+                    <!-- Comments -->
+                    @if (card.comments && card.comments > 0) {
+                      <span class="card-comments">
+                        <i class="icon-comment"></i>
+                        {{ card.comments }}
+                      </span>
+                    }
+                    <!-- Priority Badge -->
+                    <span class="priority-badge" [class]="'priority-' + card.priority">
+                      {{ card.priority | titlecase }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+          <!-- Empty State -->
+          @if (column.cards.length === 0) {
+            <div class="empty-column">
+              <i class="icon-empty"></i>
+              <p>No cards</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Card Detail Modal -->
+  @if (selectedCard) {
+    <div class="modal-overlay" (click)="closeCardDetail()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>{{ selectedCard.title }}</h3>
+          <button class="btn-close" (click)="closeCardDetail()">
+            <i class="icon-close"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <!-- Card Details -->
+          <div class="card-detail-section">
+            <label>Description</label>
+            <p class="card-full-description">{{ selectedCard.description || 'No description' }}</p>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>Assignee</label>
+              <p>{{ selectedCard.assignee || 'Unassigned' }}</p>
+            </div>
+            <div class="detail-item">
+              <label>Due Date</label>
+              <p [class.overdue]="isOverdue(selectedCard.due_date)">
+                {{ selectedCard.due_date ? formatDueDate(selectedCard.due_date) : 'No due date' }}
+              </p>
+            </div>
+            <div class="detail-item">
+              <label>Priority</label>
+              <span class="priority-badge" [class]="'priority-' + selectedCard.priority">
+                {{ selectedCard.priority | titlecase }}
+              </span>
+            </div>
+            <div class="detail-item">
+              <label>Status</label>
+              <p>{{ selectedCard.status | titlecase }}</p>
+            </div>
+          </div>
+          <!-- Tags -->
+          @if (selectedCard.tags?.length) {
+            <div class="card-detail-section">
+              <label>Tags</label>
+              <div class="tags-container">
+                @for (tag of selectedCard.tags; track tag) {
+                  <span
+                    class="tag detail-tag"
+                    [style.background]="getTagColor(tag)">
+                    {{ tag }}
+                  </span>
+                }
+              </div>
+            </div>
+          }
+          <!-- Attachments -->
+          @if (selectedCard.attachments?.length) {
+            <div class="card-detail-section">
+              <label>Attachments ({{ getSelectedCardAttachmentsLength() }})</label>
+              <div class="attachments-list">
+                @for (attachment of selectedCard.attachments; track attachment) {
+                  <div class="attachment-item">
+                    <i [class]="'icon-file-' + attachment.type"></i>
+                    <a [href]="attachment.url" target="_blank" class="attachment-link">
+                      {{ attachment.name }}
+                    </a>
+                    <span class="attachment-size">{{ getFileSize(attachment) }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+          <!-- Metadata -->
+          @if (selectedCard.metadata) {
+            <div class="card-detail-section">
+              <label>Additional Information</label>
+              <pre class="metadata-json">{{ selectedCard.metadata | json }}</pre>
+            </div>
+          }
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" (click)="closeCardDetail()">
+            Close
+          </button>
+
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Card Menu (Context Menu) -->
+  @if (showCardMenu) {
+    <div class="context-menu"
+      [style.top.px]="menuPosition.y"
+      [style.left.px]="menuPosition.x">
+      <ul>
+        <li (click)="moveCardToColumn(selectedCardForMenu, 'todo')">
+          <i class="icon-move"></i> Move to Todo
+        </li>
+        <li (click)="moveCardToColumn(selectedCardForMenu, 'in_progress')">
+          <i class="icon-move"></i> Move to In Progress
+        </li>
+        <li (click)="moveCardToColumn(selectedCardForMenu, 'done')">
+          <i class="icon-move"></i> Move to Done
+        </li>
+        <li class="divider"></li>
+        <li (click)="copyCardLink(selectedCardForMenu)">
+          <i class="icon-link"></i> Copy Link
+        </li>
+        <li (click)="exportCard(selectedCardForMenu)">
+          <i class="icon-export"></i> Export as JSON
+        </li>
+      </ul>
+    </div>
+  }
+
+</div>
