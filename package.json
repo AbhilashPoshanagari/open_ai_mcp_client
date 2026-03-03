@@ -37,10 +37,12 @@
     "event-source-polyfill": "^1.0.31",
     "langchain": "^1.1.5",
     "leaflet": "^1.9.4",
+    "material-icons": "^1.13.14",
     "ngx-markdown": "^21.0.1",
     "prismjs": "^1.30.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
+    "webrtc-adapter": "^9.0.4",
     "zod": "^4.1.13",
     "zone.js": "~0.15.0"
   },

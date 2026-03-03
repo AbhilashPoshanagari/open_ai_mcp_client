@@ -1,4 +1,4 @@
-import{j as p,q as a}from"./chunk-FT3LMQJV.js";import{a as u,i as o,pg as c}from"./chunk-PR3HXOEE.js";var _=`You are given the below API Documentation:
+import{j as p,q as a}from"./chunk-C2ZX5GRC.js";import{a as u,i as o,tg as c}from"./chunk-YM3HVE5W.js";var _=`You are given the below API Documentation:
 {api_docs}
 Using this documentation, generate the full API url to call for answering the user question.
 You should build the API url in order to get a response that is as short as possible, while still getting the necessary information to answer the question. Pay attention to deliberately exclude any unnecessary pieces of data in the API call.

@@ -297,7 +297,7 @@ export class MapComponent implements OnInit, OnChanges, AfterViewInit {
       color: '#ff0000',
       fillColor: '#ff0000',
       fillOpacity: 0.7,
-      weight: 4
+      weight: 2
     });
   }
 
@@ -454,7 +454,7 @@ export class MapComponent implements OnInit, OnChanges, AfterViewInit {
     }
   }
 
- // Public method to fit bounds to features
+  // Public method to fit bounds to features
   fitToFeatures() {
       const bounds = L.latLngBounds([]);
 
@@ -481,7 +481,6 @@ export class MapComponent implements OnInit, OnChanges, AfterViewInit {
         });
       }
     }
-
 
   // Public method to add a single feature
   addFeature(feature: FeatureDetail) {

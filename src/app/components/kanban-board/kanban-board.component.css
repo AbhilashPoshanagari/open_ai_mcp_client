@@ -50,6 +50,15 @@
       align-items: center;
       gap: 0.5rem;
       
+      &.btn-add-card {
+        background: #3498db;
+        color: white;
+        
+        &:hover {
+          background-color: #2980b9;
+        }
+      }
+      
       &.btn-settings {
         background: #ecf0f1;
         color: #7f8c8d;
@@ -321,6 +330,21 @@
         margin: 0.5rem 0 1rem 0;
       }
     }
+    
+    .add-card-placeholder {
+      padding: 1rem;
+      background: white;
+      border: 2px dashed #bdc3c7;
+      border-radius: 6px;
+      text-align: center;
+      color: #95a5a6;
+      cursor: pointer;
+      
+      &:hover {
+        border-color: #3498db;
+        color: #3498db;
+      }
+    }
   }
 }
 
@@ -484,6 +508,15 @@
           background-color: #bdc3c7;
         }
       }
+      
+      &.btn-primary {
+        background: #3498db;
+        color: white;
+        
+        &:hover {
+          background-color: #2980b9;
+        }
+      }
     }
   }
 }
@@ -530,7 +563,7 @@
   }
 }
 
-/* Settings Panel */
+/* // Settings Panel */
 .settings-panel {
   background: white;
   border-radius: 8px;
@@ -564,6 +597,25 @@
   }
 }
 
+/* Add to kanban-board.component.css */
+
+.form-modal .modal-content {
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.form-modal-content .modal-body {
+  padding: 0;
+}
+
+/* Style the chat-form component inside */
+::ng-deep app-chat-form {
+  display: block;
+  height: 100%;
+}
+
 /* Drag & Drop styles */
 .cdk-drag-placeholder {
   opacity: 0.3;
@@ -585,16 +637,4 @@
 
 .kanban-card.cdk-drag-dragging {
   opacity: 0.7;
-}
-
-.card-attachments {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.card-comments {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
 }

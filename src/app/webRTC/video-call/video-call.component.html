@@ -1,0 +1,242 @@
+<div class="video-call-container" [class.in-call]="callState.isInCall">
+  <!-- Login Prompt (when not logged in) -->
+  <div *ngIf="!currentUser" class="login-prompt">
+    <mat-card class="login-card">
+      <mat-card-header>
+        <mat-card-title>Video Call Access</mat-card-title>
+        <mat-card-subtitle>Please login to start video calls</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p>You need to be logged in to make or receive video calls.</p>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-raised-button color="primary" (click)="promptLogin()">
+          <mat-icon>login</mat-icon>
+          Login
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <!-- Main Interface (when logged in but not in call) -->
+  <div *ngIf="currentUser && !callState.isInCall" class="main-interface">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="user-info">
+        <mat-icon class="user-icon">account_circle</mat-icon>
+        <span class="welcome-text">
+          Welcome, {{ currentUser?.username }} -- {{ currentUser?.id }}
+        </span>
+        <span class="status-indicator online">● Online</span>
+      </div>
+      <button mat-button color="warn" (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        Logout
+      </button>
+    </div>
+
+    <!-- Call Controls -->
+    <div class="call-controls-section">
+      <mat-card class="call-card">
+        <mat-card-header>
+          <mat-card-title>Start a Video Call</mat-card-title>
+          <mat-card-subtitle>Enter the username of the person you want to call</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="call-input">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Username to call</mat-label>
+              <input 
+                matInput 
+                [(ngModel)]="targetUserName" 
+                placeholder="Enter username"
+                (keyup.enter)="startCall()">
+              <mat-icon matSuffix>person</mat-icon>
+            </mat-form-field>
+          </div>
+        </mat-card-content>
+        <mat-card-actions>
+          <button 
+            mat-raised-button 
+            color="primary" 
+            (click)="startCall()" 
+            [disabled]="!targetUserName"
+            class="start-call-btn">
+            <mat-icon>video_call</mat-icon>
+            Request Video Call
+          </button>
+        </mat-card-actions>
+      </mat-card>
+
+      <!-- Room Info -->
+      <mat-card class="info-card">
+        <mat-card-content>
+          <div class="room-info">
+            <mat-icon>meeting_room</mat-icon>
+            <span>Your Room ID: <strong>{{ roomId }}</strong></span>
+            <button mat-icon-button (click)="copyRoomId()" matTooltip="Copy Room ID">
+              <mat-icon>content_copy</mat-icon>
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+
+  <!-- Incoming Call Alert (Full Screen Overlay) -->
+  <div *ngIf="incomingCallInfo && !callState.isInCall" class="incoming-call-alert">
+    <div class="alert-overlay">
+      <div class="alert-content">
+        <div class="caller-info">
+          <div class="caller-avatar">
+            <mat-icon class="caller-icon">account_circle</mat-icon>
+          </div>
+          <h2>{{ incomingCallInfo.senderName }}</h2>
+          <p class="calling-text">is calling you...</p>
+        </div>
+        
+        <!-- Ringing Animation -->
+        <div class="ringing-animation">
+          <div class="ring ring-1"></div>
+          <div class="ring ring-2"></div>
+          <div class="ring ring-3"></div>
+        </div>
+
+        <div class="alert-actions">
+          <button 
+            mat-fab 
+            color="primary" 
+            (click)="acceptIncomingCall(incomingCallInfo.senderId)" 
+            class="accept-btn"
+            matTooltip="Accept Call">
+            <mat-icon>call</mat-icon>
+          </button>
+          <button 
+            mat-fab 
+            color="warn" 
+            (click)="rejectIncomingCall(incomingCallInfo.senderId)" 
+            class="reject-btn"
+            matTooltip="Decline Call">
+            <mat-icon>call_end</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-call Interface -->
+  <div *ngIf="callState.isInCall" class="in-call-interface">
+    <!-- Ringing Indicator (for outgoing calls) -->
+    <div *ngIf="callState.isRinging && !callState.isCallActive" class="ringing-overlay">
+      <div class="ringing-content">
+        <mat-spinner diameter="50"></mat-spinner>
+        <h3>Calling {{ targetUserName }}...</h3>
+        <p>Waiting for answer</p>
+        <div class="ringing-controls">
+          <button 
+            mat-fab 
+            color="warn" 
+            (click)="endCall()" 
+            matTooltip="Cancel Call">
+            <mat-icon>call_end</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Grid -->
+    <div class="video-grid">
+      <!-- Local Video (minimized when remote exists) -->
+      <div class="video-container local-video" [class.minimized]="callState.isCallActive">
+        <video 
+          #localVideo 
+          autoplay 
+          muted 
+          playsinline 
+          (loadedmetadata)="playVideo(localVideo)">
+        </video>
+        <div class="video-overlay">
+          <span class="user-name">{{ currentUser?.username }} (You)</span>
+          <div class="video-status">
+            <mat-icon *ngIf="callState.isMuted" class="status-icon muted" matTooltip="Mic Muted">mic_off</mat-icon>
+            <mat-icon *ngIf="!callState.isVideoOn" class="status-icon video-off" matTooltip="Video Off">videocam_off</mat-icon>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remote Video -->
+      <div class="video-container remote-video">
+        <video 
+          #remoteVideo
+          autoplay
+          playsinline
+          (loadedmetadata)="playVideo(remoteVideo)">
+        </video>
+        <div class="video-overlay">
+          <span class="user-name">{{ targetUserName }}</span>
+          <div class="video-status">
+            <span class="connection-status" [class.connected]="callState.isCallActive">
+              {{ callState.isCallActive ? '● Connected' : '● Connecting...' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Waiting for connection -->
+      <div *ngIf="!callState.isCallActive && !callState.isRinging" class="connecting-overlay">
+        <div class="connecting-content">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>Establishing connection...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Call Controls -->
+    <div class="call-controls-bar">
+      <button 
+        mat-fab 
+        [color]="callState.isMuted ? 'warn' : 'primary'"
+        (click)="toggleMute()"
+        class="control-btn"
+        matTooltip="{{ callState.isMuted ? 'Unmute' : 'Mute' }}"
+        [disabled]="!callState.isCallActive">
+        <mat-icon>{{ callState.isMuted ? 'mic_off' : 'mic' }}</mat-icon>
+      </button>
+
+      <button 
+        mat-fab 
+        [color]="callState.isVideoOn ? 'primary' : 'warn'"
+        (click)="toggleVideo()"
+        class="control-btn"
+        matTooltip="{{ callState.isVideoOn ? 'Turn off video' : 'Turn on video' }}"
+        [disabled]="!callState.isCallActive">
+        <mat-icon>{{ callState.isVideoOn ? 'videocam' : 'videocam_off' }}</mat-icon>
+      </button>
+
+      <button mat-fab 
+              [color]="callState.isScreenSharing ? 'accent' : 'primary'"
+              (click)="toggleScreenShare()"
+              class="control-button"
+              matTooltip="{{ callState.isScreenSharing ? 'Stop sharing' : 'Share screen' }}"
+              [disabled]="!callState.isCallActive">
+        <mat-icon>{{ callState.isScreenSharing ? 'stop_screen_share' : 'screen_share' }}</mat-icon>
+      </button>
+
+      <button 
+        mat-fab 
+        color="warn" 
+        (click)="endCall()" 
+        class="end-call-btn"
+        matTooltip="End Call"
+        [disabled]="!callState.isCallActive">
+        <mat-icon>call_end</mat-icon>
+      </button>
+    </div>
+
+    <!-- Call Timer (when connected) -->
+    <div class="call-timer" *ngIf="callState.isCallActive">
+      <mat-icon>schedule</mat-icon>
+      <span>{{ getCallDuration() }}</span>
+    </div>
+  </div>
+</div>

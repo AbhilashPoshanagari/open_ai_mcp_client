@@ -29,7 +29,6 @@
  -->
 
  <div class="mcp-client" [class.header-mode]="displayMode === 'header'">
-  <!-- For header display mode (compact) -->
   @if (displayMode === 'header') {
     <div class="header-compact-view">
       <button mat-icon-button 
@@ -52,10 +51,19 @@
               (click)="openai_props.domain= openAiKey();toggleOpenAiConfig(openai_props)">
         <mat-icon>key</mat-icon>
       </button>
+        <button mat-icon-button 
+              matTooltip="media server config"
+              (click)="media_props.domain= mediaServer();openMediaServerConfigDialog()">
+        <mat-icon>dns</mat-icon>
+      </button>
+      <button mat-icon-button 
+              matTooltip="web socket config"
+              (click)="web_socket_props.domain= webSocketServer();openWebSocketServerConfigDialog()">
+        <mat-icon>cast_connected</mat-icon>
+      </button>
     </div>
   }
   
-  <!-- For sidebar display mode (full) -->
   @if (displayMode === 'sidebar') {
     <div class="sidebar-full-view">
       <h3>MCP Configuration</h3>
