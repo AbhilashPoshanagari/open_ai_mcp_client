@@ -172,6 +172,74 @@
   color: #6b7280;
 }
 
+/* Voice Call Overlay - Fix for app component */
+.voice-call-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  animation: fadeIn 0.2s ease;
+}
+
+.voice-call-modal {
+  width: 100vw;
+  height: 100vh;
+  background: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0;
+  
+  @media (min-width: 768px) {
+    width: 95vw;
+    height: 90vh;
+    max-width: 1400px;
+    border-radius: 16px;
+  }
+}
+
+.voice-call-modal .modal-header {
+  background: #2a2a2a;
+  border-bottom: 1px solid #333;
+  padding: 16px 20px;
+  flex-shrink: 0;
+  
+  h2 {
+    color: white;
+    margin: 0;
+    font-size: 20px;
+  }
+  
+  .close-button {
+    color: #aaa;
+    
+    &:hover {
+      color: white;
+    }
+  }
+}
+
+.voice-call-modal .modal-body {
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  
+  app-video-call {
+    flex: 1;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .input-container {
@@ -200,6 +268,13 @@
   .selected-chips {
     margin-top: 12px;
     padding-top: 12px;
+  }
+  .chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 25px;
   }
 }
 
@@ -230,12 +305,54 @@
   }
   
   .chips-container {
-    gap: 6px;
+    /* gap: 6px; */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 25px;
   }
   
   .custom-chip {
     font-size: 0.8125rem !important;
     padding: 5px 10px !important;
+  }
+
+    .mute-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    color: #1e293b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 36px;
+  }
+
+  .mute-button.muted {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #dc2626;
+  }
+
+  .mute-button .mic-icon {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .mute-status {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.875rem;
+    color: #10b981;
+  }
+
+  .mute-status.muted {
+    color: #ef4444;
   }
 }
 
